@@ -1,0 +1,9 @@
+.video-container {
+    width: 300px;
+    margin: 0 auto;
+  }
+  
+  .video-container video {
+    width: 100%;
+  }
+  
