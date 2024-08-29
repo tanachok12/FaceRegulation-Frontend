@@ -1,0 +1,12 @@
+.video-feed {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+  }
+  
+  .modal-content {
+    width: 90%;
+    max-width: 500px;
+    margin: auto;
+  }
+  

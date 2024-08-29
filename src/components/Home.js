@@ -9,9 +9,11 @@ Modal.setAppElement('#root'); // ระบุ element หลักของแ�
 
 const Home = () => {
   const [user, setUser] = useState(null);
-  const [isValidUser, setIsValidUser] = useState(true); // Add this state
+  const [isValidUser, setIsValidUser] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState(""); // State for modal message
   const videoRef = useRef(null);
+  const previousFrameRef = useRef(null);
 
   const startVideo = () => {
     navigator.mediaDevices
@@ -39,7 +41,18 @@ const Home = () => {
       const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL('image/png');
-      const base64Image = imageData.split(',')[1]; // Remove the base64 prefix
+      const base64Image = imageData.split(',')[1];
+
+      // ตรวจจับการเคลื่อนไหว
+      const currentFrame = context.getImageData(0, 0, canvas.width, canvas.height);
+      if (previousFrameRef.current) {
+        const diff = calculateFrameDifference(previousFrameRef.current, currentFrame);
+        if (diff < 10) { // someThreshold - ปรับแต่ง threshold ตามความเหมาะสม
+          console.log('No significant motion detected, skipping...');
+          return;
+        }
+      }
+      previousFrameRef.current = currentFrame;
 
       const headers = {
         'Content-Type': 'application/json',
@@ -48,55 +61,69 @@ const Home = () => {
 
       try {
         console.log('Sending request to /check_motion');
-        const motionResponse = await axios.post('http://127.0.0.1:5001/check_motion', { image: base64Image }, { headers });
+        const motionResponse = await axios.post('http://103.29.189.112:80/check_motion', { image: base64Image }, { headers });
         console.log('Received response from /check_motion:', motionResponse.data);
-
+  
         if (motionResponse.data.motion_detected) {
           console.log('Motion detected: human');
-          toast.success('Motion detected: human');
-
+          toast.success('ตรวจพบการเคลื่อนไหว: มนุษย์');
+  
           console.log('Sending request to /check_face');
-          const faceResponse = await axios.post('http://127.0.0.1:5001/check_face', { image: base64Image }, { headers });
+          const faceResponse = await axios.post('http://103.29.189.112:80/check_face', { image: base64Image }, { headers });
           console.log('Received response from /check_face:', faceResponse.data);
-
+  
           console.log('Sending request to /check_face_count');
-          const faceCountResponse = await axios.post('http://127.0.0.1:5001/check_face_count', { image: base64Image }, { headers });
+          const faceCountResponse = await axios.post('http://103.29.189.112:80/check_face_count', { image: base64Image }, { headers });
           console.log('Received response from /check_face_count:', faceCountResponse.data);
-
+  
           if (faceResponse.data.error) {
             console.log('Error in /check_face:', faceResponse.data.error);
-            toast.error(`Face check error: ${faceResponse.data.error}`);
+            toast.error(`ข้อผิดพลาดในการตรวจสอบใบหน้า: ${faceResponse.data.error}`);
+            if (faceResponse.data.error === "No blink detected") {
+              setModalMessage("กรุณากระพริบตา");
+              setShowModal(true);
+            }
           } else if (faceCountResponse.data.error) {
             console.log('Error in /check_face_count:', faceCountResponse.data.error);
-            toast.error(`Face count error: ${faceCountResponse.data.error}`);
+            toast.error(`ข้อผิดพลาดในการตรวจนับใบหน้า: ${faceCountResponse.data.error}`);
           } else {
             const faceCount = faceCountResponse.data.face_count;
             if (faceCount > 1) {
-              toast.error(`More than one face detected: ${faceCount} faces`);
+              toast.error(`ตรวจพบใบหน้ามากกว่าหนึ่งใบหน้า: ${faceCount} ใบหน้า`);
             } else if (faceCount === 0) {
-              toast.error('No face detected in the image');
+              toast.error('ไม่พบใบหน้าในภาพ');
             } else if (faceResponse.data.match) {
               setUser(faceResponse.data.user);
-              setIsValidUser(true); // Set as valid user
-              setShowModal(false); // ปิด modal หากตรงกัน
-              toast.success('User identified successfully');
+              setIsValidUser(true);
+              setShowModal(false);
+              toast.success('ยืนยันตัวตนผู้ใช้สำเร็จ');
             } else {
               setUser(null);
-              setIsValidUser(false); // Set as invalid user
-              setShowModal(true); // แสดง modal หากไม่ตรงกัน
-              toast.error('Face mismatch detected');
+              setIsValidUser(false);
+              setModalMessage("ตรวจพบความไม่ตรงกันของใบหน้า");
+              setShowModal(true);
+              toast.error('ตรวจพบความไม่ตรงกันของใบหน้า');
             }
           }
         } else {
           console.log('Motion not detected: not a human');
-          toast.error('Motion not detected: not a human');
+          toast.error('ไม่พบการเคลื่อนไหว: ไม่ใช่มนุษย์');
         }
       } catch (error) {
         console.error('Error:', error);
-        toast.error('An error occurred during identification');
       }
     }
   }, []);
+
+  function calculateFrameDifference(frame1, frame2) {
+    let diff = 0;
+    for (let i = 0; i < frame1.data.length; i += 4) {
+      diff += Math.abs(frame1.data[i] - frame2.data[i]);
+      diff += Math.abs(frame1.data[i + 1] - frame2.data[i + 1]);
+      diff += Math.abs(frame1.data[i + 2] - frame2.data[i + 2]);
+    }
+    return diff / (frame1.data.length / 4);
+  }
 
   useEffect(() => {
     startVideo();
@@ -106,7 +133,7 @@ const Home = () => {
       console.log('Decoded token:', decodedToken);
     }
 
-    const intervalId = setInterval(handleCapture, 3000); // Capture every 3 seconds
+    const intervalId = setInterval(handleCapture, 5000);
     return () => clearInterval(intervalId);
   }, [handleCapture]);
 
@@ -116,25 +143,32 @@ const Home = () => {
       <video ref={videoRef} style={{ width: '50%' }} />
       {user ? (
         <div>
-          <h3>Identified User:</h3>
+          <h3>ผู้ใช้ที่ยืนยันตัวตน:</h3>
           <p>{user.first_name} {user.last_name}</p>
           <p>{user.email}</p>
         </div>
       ) : (
         isValidUser ? (
-          <p>No match found</p>
+          <p>ไม่พบการจับคู่</p>
         ) : (
-          <p>Invalid User</p>
+          <p>ผู้ใช้ไม่ถูกต้อง</p>
         )
       )}
       <Modal
         isOpen={showModal}
         onRequestClose={() => setShowModal(false)}
-        contentLabel="Face Mismatch Warning"
+        contentLabel="การแจ้งเตือนความไม่ตรงกันของใบหน้า"
+        style={{
+          content: {
+            width: '300px',
+            height: '200px',
+            margin: 'auto',
+            textAlign: 'center'
+          }
+        }}
       >
-        <h2>Face Mismatch</h2>
-        <p>The face detected does not match the registered user.</p>
-        <button onClick={() => setShowModal(false)}>Close</button>
+        <h2>{modalMessage}</h2>
+        <button onClick={() => setShowModal(false)}>ปิด</button>
       </Modal>
       <ToastContainer />
     </div>

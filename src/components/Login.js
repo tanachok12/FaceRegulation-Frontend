@@ -10,18 +10,18 @@ const Login = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
+  
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
-
+  
     try {
-      const response = await axios.post('http://127.0.0.1:5001/login', formData, {
+      const response = await axios.post('http://103.29.189.112:80/login', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-
+  
       if (response.status === 200) {
         const data = response.data;
         localStorage.setItem('token', data.token);
@@ -33,6 +33,7 @@ const Login = () => {
       console.error('Error:', error);
     }
   };
+  
 
   return (
     <div>
