@@ -61,7 +61,7 @@ const Home = () => {
 
       try {
         console.log('Sending request to /check_motion');
-        const motionResponse = await axios.post('https://103.29.189.112:80/check_motion', { image: base64Image }, { headers });
+        const motionResponse = await axios.post('https://103.29.189.112/check_motion', { image: base64Image }, { headers });
         console.log('Received response from /check_motion:', motionResponse.data);
   
         if (motionResponse.data.motion_detected) {
@@ -69,11 +69,11 @@ const Home = () => {
           toast.success('ตรวจพบการเคลื่อนไหว: มนุษย์');
   
           console.log('Sending request to /check_face');
-          const faceResponse = await axios.post('https://103.29.189.112:80/check_face', { image: base64Image }, { headers });
+          const faceResponse = await axios.post('https://103.29.189.112/check_face', { image: base64Image }, { headers });
           console.log('Received response from /check_face:', faceResponse.data);
   
           console.log('Sending request to /check_face_count');
-          const faceCountResponse = await axios.post('https://103.29.189.112:80/check_face_count', { image: base64Image }, { headers });
+          const faceCountResponse = await axios.post('https://103.29.189.112/check_face_count', { image: base64Image }, { headers });
           console.log('Received response from /check_face_count:', faceCountResponse.data);
   
           if (faceResponse.data.error) {
