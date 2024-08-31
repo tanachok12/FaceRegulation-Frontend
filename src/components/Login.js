@@ -16,12 +16,12 @@ const Login = () => {
     formData.append('password', password);
   
     try {
-      const response = await axios.post('https://103.29.189.112/login', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
+     const response = await axios.post('https://103.29.189.112/login', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data',
+  },
+});
+
   
       if (response.status === 200) {
         const data = response.data;
